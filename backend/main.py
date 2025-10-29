@@ -204,6 +204,14 @@ async def health():
         "deepseek_api_key": "✅" if os.getenv("DEEPSEEK_API_KEY") else "❌"
     }
 
+@app.get("/api/spotify-client-id")
+async def get_spotify_client_id():
+    """Expose the Spotify client ID safely to the frontend."""
+    client_id = os.getenv("SPOTIFY_CLIENT_ID")
+    if not client_id:
+        return {"error": "SPOTIFY_CLIENT_ID not set in environment"}
+    return {"client_id": client_id}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

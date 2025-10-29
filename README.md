@@ -1,16 +1,32 @@
-# React + Vite
+# HarmonicOS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Team & Contributions
+- **Soham Vohra**: Built the playlist creation system, Spotify API integration, and front-end components.
+-  Built the UI styling and modal interactions.
+-  Worked on backend setup and API routing.
 
-Currently, two official plugins are available:
+## What It Does
+HarmonicOS is a music playlist builder that lets users browse tracks, add them to a “playlist cart,” and create custom Spotify playlists directly from the web app. The frontend handles Spotify authentication and playlist creation through the Spotify API, while the backend supports additional data handling and mock endpoints.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Setup
+### Frontend
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+### Backend
+Inside the `music_playlist/backend` directory:
+```bash
+python3 -m venv venv
+source venv/bin/activate   # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The frontend runs on Vite (React), and the backend runs on FastAPI with Uvicorn. You can engage with the app at https://localhost:5173
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Data
+This app is fully connected to the Spotify Web API. Authentication is handled using Spotify's authentication + JWT
+token return functionality, with properly setting up Redirect URI through Spotify's app dashboard. Client secret and
+key are stored in .env file (which should be in /backend folder), and served to the front end to handle auth.

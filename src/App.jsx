@@ -39,7 +39,6 @@ async function createCodeChallenge(codeVerifier) {
   return base64UrlEncode(hashed);
 }
 
-const SPOTIFY_CLIENT_ID = 'a5b0bfc58a664c6eabd3ec06845b84bc';
 const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:5173/callback';
 
 const SPOTIFY_SCOPES = [
@@ -60,6 +59,9 @@ function App() {
   // tracks the user has added to their "playlist cart"
   const [cartTracks, setCartTracks] = useState([]);
 
+  // Spotify client ID (fetched from backend)
+  const [spotifyClientId, setSpotifyClientId] = useState(null);
+
   // derived convenience flag: do we have a Spotify access token yet?
   const isSpotifyConnected = !!spotifyToken;
 
@@ -74,34 +76,57 @@ function App() {
   };
 
   useEffect(() => {
+    // Fetch the Spotify client ID from backend API
+    fetch('http://localhost:8000/api/spotify-client-id')
+      .then(res => res.json())
+      .then(data => {
+        if (data.client_id) {
+          setSpotifyClientId(data.client_id);
+          console.log('Fetched Spotify Client ID:', data.client_id);
+        } else {
+          console.error('Error fetching client ID:', data.error);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch Spotify Client ID:', err);
+      });
+  }, []);
+
+  useEffect(() => {
     // Example redirect back:
     // http://127.0.0.1:5173/callback?code=ABC123
     // OR maybe user is just on the main page with no code.
     const url = new URL(window.location.href);
     const authCode = url.searchParams.get('code');
-  
+
     if (!authCode) {
       // no code in URL -> user either hasn't logged in yet OR already has token in state
       return;
     }
-  
+
     // we DO have an auth code -> exchange it for an access token using PKCE
     const codeVerifier = sessionStorage.getItem('spotify_code_verifier');
     if (!codeVerifier) {
       console.error('Missing code_verifier in sessionStorage, cannot finish PKCE');
       return;
     }
-  
+
+    // Don't proceed until client ID is loaded
+    if (!spotifyClientId) {
+      console.error('Spotify client ID not loaded yet');
+      return;
+    }
+
     // Build the token request body. Spotify expects
     // application/x-www-form-urlencoded
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code: authCode,
       redirect_uri: SPOTIFY_REDIRECT_URI,
-      client_id: SPOTIFY_CLIENT_ID,
+      client_id: spotifyClientId,
       code_verifier: codeVerifier,
     });
-  
+
     fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -119,10 +144,10 @@ function App() {
         console.log('Spotify token response:', data);
         if (data.access_token) {
           setSpotifyToken(data.access_token);
-  
+
           // clean up URL (remove ?code=...)
           window.history.replaceState({}, document.title, window.location.pathname);
-  
+
           // optional: clear verifier since it's one-time use
           sessionStorage.removeItem('spotify_code_verifier');
         } else {
@@ -132,35 +157,41 @@ function App() {
       .catch(err => {
         console.error('Token exchange error:', err);
       });
-  }, []);
+  }, [spotifyClientId]);
 
   const ensureSpotifyAuth = async () => {
     // if we already have a token in state, great
     if (spotifyToken) {
       return spotifyToken;
     }
-  
+
+    // Guard: must have client ID loaded before proceeding
+    if (!spotifyClientId) {
+      alert('Spotify client ID not loaded yet. Please try again.');
+      return null;
+    }
+
     // no token? start PKCE flow:
     // 1. make a code_verifier
     const codeVerifier = generateCodeVerifier();
     sessionStorage.setItem('spotify_code_verifier', codeVerifier);
-  
+
     // 2. make a code_challenge
     const codeChallenge = await createCodeChallenge(codeVerifier);
-  
+
     // 3. build the authorize URL using response_type=code and PKCE bits
     const authUrl =
       'https://accounts.spotify.com/authorize' +
       '?response_type=code' +
-      '&client_id=' + encodeURIComponent(SPOTIFY_CLIENT_ID) +
+      '&client_id=' + encodeURIComponent(spotifyClientId) +
       '&redirect_uri=' + encodeURIComponent(SPOTIFY_REDIRECT_URI) +
       '&scope=' + encodeURIComponent(SPOTIFY_SCOPES) +
       '&code_challenge_method=S256' +
       '&code_challenge=' + encodeURIComponent(codeChallenge) +
       '&show_dialog=true';
-  
+
     console.log('PKCE auth redirect ->', authUrl);
-  
+
     // 4. send user to Spotify login/consent.
     window.location = authUrl;
     return null;
